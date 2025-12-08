@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiosk Ordering System</title>
+    <style>
+        /* --- RESET & BASIC STYLES --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #f4f4f4; height: 100vh; overflow: hidden; }
+
+        /* --- LAYOUT CONTAINER --- */
+        .kiosk-wrapper { display: flex; height: 100vh; width: 100vw; flex-direction: column; }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: 100%; background-color: #fff; border-bottom: 1px solid #ddd;
+            display: flex; overflow-x: auto; white-space: nowrap; padding: 10px;
+            z-index: 10; -ms-overflow-style: none; scrollbar-width: none;
+        }
+        .sidebar::-webkit-scrollbar { display: none; }
+        .category-item {
+            padding: 10px 20px; margin-right: 10px; border-radius: 20px;
+            background-color: #f0f0f0; font-weight: 600; color: #555; cursor: pointer;
+            display: flex; align-items: center; flex-shrink: 0;
+        }
+        .category-item.active { background-color: #d32f2f; color: #fff; }
+
+        /* --- MAIN CONTENT --- */
+        .main-content {
+            flex: 1; padding: 15px; overflow-y: auto; background-color: #f9f9f9; padding-bottom: 150px;
+        }
+        .grid-header { font-size: 1.5rem; color: #333; margin-bottom: 15px; font-weight: 800; }
+        .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+
+        /* --- PRODUCT CARD --- */
+        .product-card {
+            background: white; border-radius: 12px; padding: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center;
+            transition: transform 0.1s; position: relative;
+        }
+        .product-card:active { transform: scale(0.96); }
+        .p-image {
+            width: 100%; height: 100px;
+            background-color: #eee; border-radius: 8px; margin-bottom: 8px;
+            display: flex; align-items: center; justify-content: center;
+            color: #aaa; object-fit: cover;
+        }
+        .p-name { font-weight: 600; font-size: 0.95rem; color: #333; margin-bottom: 4px; line-height: 1.2; }
+        .p-price { color: #d32f2f; font-weight: 800; font-size: 1.1rem; }
+
+        /* --- FOOTER OVERLAY (Item Details) --- */
+        .footer-overlay {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: auto; min-height: 30vh;
+            background-color: white; box-shadow: 0 -5px 20px rgba(0,0,0,0.15);
+            border-top-left-radius: 20px; border-top-right-radius: 20px;
+            transform: translateY(110%); transition: transform 0.3s; z-index: 100;
+            display: flex; flex-direction: column; padding-bottom: 20px;
+        }
+        .footer-overlay.visible { transform: translateY(0); }
+        .footer-header { padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .selected-item-name { font-size: 1.2rem; font-weight: 700; }
+        .close-btn { background: none; border: none; font-size: 1.5rem; padding: 5px; cursor: pointer; }
+        .footer-body { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+        
+        .qty-selector { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 10px; }
+        .qty-btn { width: 45px; height: 45px; border-radius: 50%; border: 1px solid #ddd; background: white; font-size: 1.5rem; cursor: pointer; }
+        .qty-display { font-size: 1.5rem; font-weight: bold; }
+        
+        .add-btn { background-color: #d32f2f; color: white; padding: 15px; border-radius: 12px; border: none; font-size: 1.1rem; font-weight: 700; width: 100%; cursor: pointer; }
+
+        /* --- FLOATING CART BUTTON (NEW!) --- */
+        .floating-cart-btn {
+            position: fixed; bottom: 20px; right: 20px; left: 20px;
+            background-color: #333; color: white;
+            padding: 15px 20px; border-radius: 50px;
+            display: none; /* Hidden if empty */
+            justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 90;
+            cursor: pointer; transform: translateY(0); transition: 0.2s;
+        }
+        .floating-cart-btn:active { transform: scale(0.98); }
+        .cart-info { display: flex; flex-direction: column; }
+        .cart-count { font-size: 0.8rem; opacity: 0.8; }
+        .cart-total { font-weight: 800; font-size: 1.1rem; }
+        .view-order-text { font-weight: 700; }
+
+        /* --- CART MODAL (CONFIRMATION) --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 200;
+            display: none; align-items: center; justify-content: center;
+        }
+        .cart-modal {
+            background: white; width: 90%; max-width: 400px; max-height: 80vh;
+            border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;
+        }
+        .cart-modal-header { padding: 15px; background: #f8f9fa; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 1.1rem; }
+        .cart-modal-body { padding: 15px; overflow-y: auto; flex: 1; }
+        .cart-item-row { display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #eee; }
+        .cart-modal-footer { padding: 15px; border-top: 1px solid #eee; background: white; }
+        .btn-confirm { background-color: #4caf50; color: white; width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: 700; font-size: 1.1rem; cursor: pointer; }
+
+        @media (min-width: 768px) {
+            .kiosk-wrapper { flex-direction: row; }
+            .sidebar { width: 250px; height: 100vh; flex-direction: column; overflow-y: auto; overflow-x: hidden; padding: 0; }
+            .category-item { border-radius: 0; margin-right: 0; background-color: transparent; padding: 25px 20px; border-bottom: 1px solid #eee; }
+            .category-item.active { background-color: #ffc107; color: #d32f2f; }
+            .product-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+            .footer-body { flex-direction: row; }
+            .add-btn { width: auto; padding: 15px 40px; border-radius: 50px; }
+            .p-image { height: 140px; }
+            .floating-cart-btn { left: auto; width: 300px; } /* Fixed width on desktop */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="kiosk-wrapper">
+        <aside class="sidebar">
+            </aside>
+
+        <main class="main-content">
+            <div class="grid-header" id="categoryTitle">Loading...</div>
+            <div class="product-grid" id="productGrid">
+                </div>
+        </main>
+    </div>
+
+    <div class="footer-overlay" id="footerOverlay">
+        <div class="footer-header">
+            <span class="selected-item-name" id="footerItemName">Item</span>
+            <button class="close-btn" onclick="closeFooter()">✕</button>
+        </div>
+        <div class="footer-body">
+            <div class="qty-selector">
+                <button class="qty-btn" onclick="changeQty(-1)">-</button>
+                <span class="qty-display" id="qtyDisplay">1</span>
+                <button class="qty-btn" onclick="changeQty(1)">+</button>
+            </div>
+            <button class="add-btn" onclick="addToCart()">Add to Cart - <span id="footerPrice">$0.00</span></button>
+        </div>
+    </div>
+
+    <div class="floating-cart-btn" id="floatingCartBtn" onclick="openCartModal()">
+        <div class="cart-info">
+            <span class="cart-count" id="btnCount">0 Items</span>
+            <span class="cart-total" id="btnTotal">₱0.00</span>
+        </div>
+        <span class="view-order-text">View Order ></span>
+    </div>
+
+    <div class="modal-overlay" id="cartModal">
+        <div class="cart-modal">
+            <div class="cart-modal-header">
+                <span>My Order</span>
+                <button class="close-btn" onclick="closeCartModal()">✕</button>
+            </div>
+            <div class="cart-modal-body" id="cartList">
+                </div>
+            <div class="cart-modal-footer">
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-weight:bold;">
+                    <span>Total:</span>
+                    <span id="modalTotal">₱0.00</span>
+                </div>
+                <button class="btn-confirm" onclick="submitOrder()">Confirm & Pay</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA STATE ---
+        let cart = []; 
+        let currentProduct = null;
+        let products = [];
+        let currentQty = 1;
+
+        // --- FETCH CATEGORIES ---
+        function loadCategories() {
+            fetch('admin_api.php?action=get_categories')
+                .then(res => res.json())
+                .then(categories => {
+                    const sidebar = document.querySelector('.sidebar');
+                    sidebar.innerHTML = ''; 
+
+                    categories.forEach((cat, index) => {
+                        const activeClass = index === 0 ? 'active' : '';
+                        sidebar.innerHTML += `
+                            <div class="category-item ${activeClass}" onclick="switchCategory(this, '${cat.name}')">
+                                ${cat.icon} ${cat.name}
+                            </div>
+                        `;
+                        if (index === 0) {
+                            document.getElementById('categoryTitle').textContent = cat.name;
+                            renderProducts(cat.name);
+                        }
+                    });
+                });
+        }
+
+        // --- FETCH MENU ---
+        function loadMenu() {
+            fetch('get_products.php')
+                .then(res => res.json())
+                .then(data => {
+                    products = data; 
+                })
+                .catch(err => console.error("Error loading menu:", err));
+        }
+
+        // --- RENDER PRODUCTS ---
+        const grid = document.getElementById('productGrid');
+        function renderProducts(filterCategory) {
+            grid.innerHTML = '';
+            const filtered = products.filter(p => p.category === filterCategory);
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '<div style="grid-column:span 2; text-align:center; color:#999; padding:20px;">No items here</div>';
+                return;
+            }
+
+            filtered.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                card.onclick = () => openFooter(product); 
+                
+                const imgHtml = product.image 
+                    ? `<img src="uploads/${product.image}" class="p-image">` 
+                    : `<div class="p-image">Image</div>`;
+
+                card.innerHTML = `
+                    ${imgHtml}
+                    <div class="p-name">${product.name}</div>
+                    <div class="p-price">₱${product.price}</div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // --- UI INTERACTION ---
+        function switchCategory(element, categoryName) {
+            document.querySelectorAll('.category-item').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+            document.getElementById('categoryTitle').textContent = categoryName;
+            renderProducts(categoryName);
+            closeFooter();
+        }
+
+        function openFooter(product) {
+            currentProduct = product;
+            currentQty = 1; // Reset qty
+            updateFooterUI();
+            document.getElementById('footerOverlay').classList.add('visible');
+        }
+
+        function closeFooter() {
+            document.getElementById('footerOverlay').classList.remove('visible');
+        }
+
+        function changeQty(change) {
+            if (currentQty + change >= 1) {
+                currentQty += change;
+                updateFooterUI();
+            }
+        }
+
+        function updateFooterUI() {
+            document.getElementById('footerItemName').textContent = currentProduct.name;
+            document.getElementById('qtyDisplay').textContent = currentQty;
+            const total = (currentProduct.price * currentQty).toFixed(2);
+            document.getElementById('footerPrice').textContent = "₱" + total;
+        }
+
+        // --- CART LOGIC (LOCAL ONLY) ---
+        function addToCart() {
+            if(!currentProduct) return;
+
+            // Check if item exists in cart to merge (optional, but good UX)
+            const existingItem = cart.find(i => i.name === currentProduct.name);
+            if(existingItem) {
+                existingItem.qty += currentQty;
+            } else {
+                cart.push({
+                    name: currentProduct.name,
+                    price: parseFloat(currentProduct.price),
+                    qty: currentQty
+                });
+            }
+
+            closeFooter();
+            updateFloatingCart();
+        }
+
+        function updateFloatingCart() {
+            const btn = document.getElementById('floatingCartBtn');
+            if (cart.length === 0) {
+                btn.style.display = 'none';
+                return;
+            }
+            
+            // Calculate Totals
+            const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+            const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+
+            document.getElementById('btnCount').textContent = totalQty + " Items";
+            document.getElementById('btnTotal').textContent = "₱" + totalPrice.toFixed(2);
+            
+            btn.style.display = 'flex'; // Show button
+        }
+
+        // --- CART MODAL (VIEW & SUBMIT) ---
+        function openCartModal() {
+            const list = document.getElementById('cartList');
+            list.innerHTML = '';
+            let grandTotal = 0;
+
+            cart.forEach((item, index) => {
+                const itemTotal = item.price * item.qty;
+                grandTotal += itemTotal;
+                list.innerHTML += `
+                    <div class="cart-item-row">
+                        <div>
+                            <div style="font-weight:600;">${item.name}</div>
+                            <div style="color:#777; font-size:0.9rem;">₱${item.price} x ${item.qty}</div>
+                        </div>
+                        <div style="font-weight:bold;">₱${itemTotal.toFixed(2)}</div>
+                        <button onclick="removeFromCart(${index})" style="background:none; border:none; color:red; font-size:1.2rem; margin-left:10px;">×</button>
+                    </div>
+                `;
+            });
+
+            document.getElementById('modalTotal').textContent = "₱" + grandTotal.toFixed(2);
+            document.getElementById('cartModal').style.display = 'flex';
+        }
+
+        function closeCartModal() {
+            document.getElementById('cartModal').style.display = 'none';
+        }
+
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            updateFloatingCart(); // Update button
+            if (cart.length === 0) closeCartModal(); // Close if empty
+            else openCartModal(); // Re-render list
+        }
+
+        // --- FINAL SUBMIT ---
+        function submitOrder() {
+            if (cart.length === 0) return;
+
+            const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+
+            fetch('place_order.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: cart, total: total })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    // Success!
+                    cart = []; // Clear cart
+                    updateFloatingCart();
+                    closeCartModal();
+                    alert("Order Placed Successfully! Your Order #" + data.order_id);
+                } else {
+                    alert("Error saving order");
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Connection Failed");
+            });
+        }
+
+        // --- INIT ---
+        loadCategories();
+        loadMenu();
+
+    </script>
+</body>
+</html>
