@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AllergyPass Admin</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #f4f6f8; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+
+        /* LOGIN SCREEN */
+        #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #2c3e50; z-index: 100; display: flex; align-items: center; justify-content: center; }
+        .login-box { background: white; padding: 40px; border-radius: 12px; width: 350px; text-align: center; }
+        .login-box h2 { margin-top: 0; color: #333; }
+        .login-box input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; }
+        .login-box button { width: 100%; padding: 12px; background: #c62828; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+        /* DASHBOARD */
+        .container { width: 100%; max-width: 1000px; padding: 20px; display: none; }
+        .container.visible { display: block; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header h1 { margin: 0; color: #333; display: flex; align-items: center; gap: 10px; }
+        .btn-logout { background: white; border: 1px solid #ddd; padding: 8px 15px; border-radius: 6px; cursor: pointer; }
+
+        /* NAV TABS */
+        .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
+        .tab-btn { padding: 10px 20px; border: none; background: transparent; cursor: pointer; font-weight: 600; color: #777; border-radius: 6px; }
+        .tab-btn.active { background: #e3f2fd; color: #1565c0; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* STATS */
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .stat-val { font-size: 2.5rem; font-weight: 800; color: #c62828; }
+        .stat-label { color: #666; font-size: 0.9rem; font-weight: 600; text-transform: uppercase; }
+
+        /* PANELS */
+        .panel { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .panel h3 { margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+
+        /* COMMON LIST */
+        .item-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
+        .item-card { border: 1px solid #eee; padding: 15px; border-radius: 8px; text-align: center; position: relative; }
+        .item-icon { font-size: 2rem; display: block; margin-bottom: 5px; }
+        .item-name { font-weight: bold; color: #333; }
+        .item-count { font-size: 0.8rem; color: #777; margin-top: 5px; display: block;}
+        
+        .btn-card-edit { position: absolute; top: 5px; right: 25px; color: #2196f3; cursor: pointer; font-size: 1rem; }
+        .btn-card-del { position: absolute; top: 5px; right: 5px; color: #ef5350; cursor: pointer; font-size: 1rem; }
+
+        /* ADD FORM */
+        .add-form { display: flex; gap: 10px; margin-top: 20px; background: #fafafa; padding: 15px; border-radius: 8px; }
+        .add-form input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
+        .btn-add { background: #2e7d32; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+        /* MODAL */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 200; }
+        .modal { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; text-align: center; }
+        .chip-input-group { display: flex; gap: 5px; margin-bottom: 10px; }
+        .chip-input-group input { margin: 0; flex:1; padding:10px; border:1px solid #ddd; border-radius:6px;}
+        .btn-add-chip { width: auto; margin: 0; background: #333; color: white; border-radius: 6px; border:none; cursor: pointer; font-weight: bold; padding: 0 15px;}
+        .chip-container { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 15px; min-height: 40px; padding: 5px; border: 1px solid #f0f0f0; border-radius: 8px; }
+        .chip { background: #eee; padding: 4px 10px; border-radius: 15px; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; }
+        .chip span { cursor: pointer; font-weight: bold; color: #c62828; line-height: 0.8; }
+        .modal input.main-input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; }
+        .modal-actions { display: flex; justify-content: space-between; margin-top: 15px; }
+        .btn-cancel { background: #eee; color: #333; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;}
+        .btn-save-modal { background: #2196f3; color: white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;}
+
+        /* USER TABLE */
+        .user-table { width: 100%; border-collapse: collapse; }
+        .user-table th { text-align: left; padding: 12px; border-bottom: 2px solid #eee; color: #555; }
+        .user-table td { padding: 12px; border-bottom: 1px solid #eee; color: #333; }
+        .user-table tr:hover { background: #fafafa; }
+        .btn-kick { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <div class="login-box">
+            <h2>🛡️ Admin Login</h2>
+            <input type="text" id="u_name" placeholder="Username">
+            <input type="password" id="u_pass" placeholder="Password">
+            <button onclick="login()">Login</button>
+        </div>
+    </div>
+
+    <div class="container" id="dashboard">
+        <div class="header">
+            <h1>🛡️ AllergyPass <span style="font-size:1rem; color:#777; font-weight:normal;">Admin</span></h1>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('overview')">📊 Overview</button>
+            <button class="tab-btn" onclick="switchTab('common')">🥜 Common Allergens</button>
+            <button class="tab-btn" onclick="switchTab('users')">👥 Users</button>
+        </div>
+
+        <div id="tab-overview" class="tab-content active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-val" id="stat-users">0</div>
+                    <div class="stat-label">Total Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val" id="stat-custom">0</div>
+                    <div class="stat-label">Custom Rules</div>
+                </div>
+                <div class="stat-card">
+                    <div id="top-allergy" style="font-size:1.2rem; font-weight:bold; color:#333; height:45px; display:flex; align-items:end;">-</div>
+                    <div class="stat-label">Top Allergen</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-common" class="tab-content">
+            <div class="panel">
+                <h3>Manage Dictionary</h3>
+                <p style="color:#666; font-size:0.9rem;">Define common allergens and their ingredients (keywords).</p>
+                
+                <div class="item-list" id="common-list"></div>
+
+                <div class="add-form">
+                    <input type="text" id="new-name" placeholder="Name (e.g. Sesame)">
+                    <input type="text" id="new-icon" placeholder="Icon (e.g. 🥯)" style="max-width:80px;">
+                    <button class="btn-add" onclick="addItem()">+ Add</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-users" class="tab-content">
+            <div class="panel">
+                <h3>User Management</h3>
+                <table class="user-table">
+                    <thead><tr><th>ID</th><th>Username</th><th>Full Name</th><th>Profile Data</th><th>Joined</th><th>Action</th></tr></thead>
+                    <tbody id="user-list"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="editModal">
+        <div class="modal">
+            <h3>Edit Allergen</h3>
+            <input type="hidden" id="edit_id">
+            <input type="text" id="edit_name" class="main-input" placeholder="Name">
+            <input type="text" id="edit_icon" class="main-input" placeholder="Icon" style="width:100px;">
+            
+            <p style="text-align:left; font-size:0.9rem; font-weight:bold; margin-bottom:5px;">Ingredients (Keywords)</p>
+            <div class="chip-input-group">
+                <input type="text" id="chip_word" placeholder="Add ingredient (e.g. Milk)">
+                <button class="btn-add-chip" onclick="addChip()">Add</button>
+            </div>
+            <div class="chip-container" id="chipList"></div>
+
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn-save-modal" onclick="saveEdit()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let commonData = [];
+        let tempKeywords = [];
+
+        function login() {
+            const u = document.getElementById('u_name').value;
+            const p = document.getElementById('u_pass').value;
+            fetch('admin_api.php?action=login', { method: 'POST', body: JSON.stringify({username:u, password:p}) })
+            .then(res => res.json()).then(d => {
+                if(d.status === 'success') {
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('dashboard').classList.add('visible');
+                    loadAllData();
+                } else alert("Invalid Login");
+            });
+        }
+
+        function logout() { fetch('admin_api.php?action=logout').then(() => location.reload()); }
+
+        function loadAllData() { loadStats(); loadCommon(); loadUsers(); }
+
+        function loadStats() {
+            fetch('admin_api.php?action=get_stats').then(res=>res.json()).then(d => {
+                document.getElementById('stat-users').innerText = d.total_users;
+                document.getElementById('stat-custom').innerText = d.total_custom_rules;
+                if(d.top_allergies.length > 0) document.getElementById('top-allergy').innerText = d.top_allergies[0].allergy_name;
+            });
+        }
+
+        function loadCommon() {
+            fetch('admin_api.php?action=get_common').then(res=>res.json()).then(data => {
+                commonData = data;
+                const list = document.getElementById('common-list');
+                list.innerHTML = '';
+                data.forEach(item => {
+                    const kwCount = item.keywords ? item.keywords.length : 0;
+                    list.innerHTML += `
+                        <div class="item-card">
+                            <div class="btn-card-edit" onclick="openEdit(${item.id})">✏️</div>
+                            <div class="btn-card-del" onclick="deleteItem(${item.id})">×</div>
+                            <span class="item-icon">${item.icon}</span>
+                            <div class="item-name">${item.name}</div>
+                            <span class="item-count">${kwCount} ingredients</span>
+                        </div>`;
+                });
+            });
+        }
+
+        function loadUsers() {
+            fetch('admin_api.php?action=get_users').then(res=>res.json()).then(data => {
+                const tbody = document.getElementById('user-list');
+                tbody.innerHTML = '';
+                if(data.length === 0) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">No users found.</td></tr>';
+                else data.forEach(u => {
+                    tbody.innerHTML += `<tr><td>#${u.id}</td><td><b>${u.username}</b></td><td>${u.full_name}</td><td><span style="background:#eee; padding:2px 6px; border-radius:4px; font-size:0.85rem;">${u.stats}</span></td><td>${u.created_at}</td><td><button class="btn-kick" onclick="deleteUser(${u.id})">Delete</button></td></tr>`;
+                });
+            });
+        }
+
+        function addItem() {
+            const name = document.getElementById('new-name').value;
+            const icon = document.getElementById('new-icon').value;
+            if(!name) return alert("Name is required");
+            fetch('admin_api.php?action=add_common', { method:'POST', body:JSON.stringify({name, icon}) }).then(() => {
+                document.getElementById('new-name').value = ''; document.getElementById('new-icon').value = ''; loadCommon();
+            });
+        }
+
+        function deleteItem(id) { if(!confirm("Delete?")) return; fetch('admin_api.php?action=delete_common', { method:'POST', body:JSON.stringify({id}) }).then(loadCommon); }
+        function deleteUser(id) { if(!confirm("Delete User?")) return; fetch('admin_api.php?action=delete_user', { method:'POST', body:JSON.stringify({id}) }).then(() => { loadUsers(); loadStats(); }); }
+
+        // --- EDIT MODAL ---
+        function openEdit(id) {
+            const item = commonData.find(c => c.id === id);
+            document.getElementById('edit_id').value = item.id;
+            document.getElementById('edit_name').value = item.name;
+            document.getElementById('edit_icon').value = item.icon;
+            tempKeywords = item.keywords ? [...item.keywords] : [];
+            renderChips();
+            document.getElementById('editModal').style.display = 'flex';
+        }
+        function closeModal() { document.getElementById('editModal').style.display = 'none'; }
+        
+        function addChip() {
+            const val = document.getElementById('chip_word').value.trim();
+            if(val) { tempKeywords.push(val); renderChips(); document.getElementById('chip_word').value = ''; }
+        }
+        function removeChip(i) { tempKeywords.splice(i, 1); renderChips(); }
+        function renderChips() {
+            document.getElementById('chipList').innerHTML = tempKeywords.map((k, i) => `<div class="chip">${k} <span onclick="removeChip(${i})">×</span></div>`).join('');
+        }
+
+        function saveEdit() {
+            const id = document.getElementById('edit_id').value;
+            const name = document.getElementById('edit_name').value;
+            const icon = document.getElementById('edit_icon').value;
+            
+            fetch('admin_api.php?action=update_common_allergy', {
+                method: 'POST', body: JSON.stringify({ id, name, icon, keywords: tempKeywords })
+            }).then(() => { closeModal(); loadCommon(); });
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tab).classList.add('active');
+        }
+
+        fetch('admin_api.php?action=check_session').then(res=>res.json()).then(d => { if(d.status === 'logged_in') { document.getElementById('login-screen').style.display = 'none'; document.getElementById('dashboard').classList.add('visible'); loadAllData(); }});
+    </script>
+</body>
+</html>
