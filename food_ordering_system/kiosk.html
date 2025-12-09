@@ -10,7 +10,7 @@
         body { background-color: #f4f4f4; height: 100vh; overflow: hidden; }
 
         /* --- LAYOUT CONTAINER --- */
-        .kiosk-wrapper { display: flex; height: 100vh; width: 100vw; flex-direction: column; }
+        .kiosk-wrapper { display: flex; height: 100vh; width: 100vw; flex-direction: column; position: relative; }
 
         /* --- SIDEBAR --- */
         .sidebar {
@@ -49,7 +49,7 @@
         .p-name { font-weight: 600; font-size: 0.95rem; color: #333; margin-bottom: 4px; line-height: 1.2; }
         .p-price { color: #d32f2f; font-weight: 800; font-size: 1.1rem; }
 
-        /* --- FOOTER OVERLAY (Item Details) --- */
+        /* --- FOOTER OVERLAY --- */
         .footer-overlay {
             position: fixed; bottom: 0; left: 0; width: 100%; height: auto; min-height: 30vh;
             background-color: white; box-shadow: 0 -5px 20px rgba(0,0,0,0.15);
@@ -62,20 +62,16 @@
         .selected-item-name { font-size: 1.2rem; font-weight: 700; }
         .close-btn { background: none; border: none; font-size: 1.5rem; padding: 5px; cursor: pointer; }
         .footer-body { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
-        
         .qty-selector { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 10px; }
         .qty-btn { width: 45px; height: 45px; border-radius: 50%; border: 1px solid #ddd; background: white; font-size: 1.5rem; cursor: pointer; }
         .qty-display { font-size: 1.5rem; font-weight: bold; }
-        
         .add-btn { background-color: #d32f2f; color: white; padding: 15px; border-radius: 12px; border: none; font-size: 1.1rem; font-weight: 700; width: 100%; cursor: pointer; }
 
-        /* --- FLOATING CART BUTTON (NEW!) --- */
+        /* --- FLOATING CART BUTTON --- */
         .floating-cart-btn {
             position: fixed; bottom: 20px; right: 20px; left: 20px;
-            background-color: #333; color: white;
-            padding: 15px 20px; border-radius: 50px;
-            display: none; /* Hidden if empty */
-            justify-content: space-between; align-items: center;
+            background-color: #333; color: white; padding: 15px 20px; border-radius: 50px;
+            display: none; justify-content: space-between; align-items: center;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 90;
             cursor: pointer; transform: translateY(0); transition: 0.2s;
         }
@@ -85,11 +81,10 @@
         .cart-total { font-weight: 800; font-size: 1.1rem; }
         .view-order-text { font-weight: 700; }
 
-        /* --- CART MODAL (CONFIRMATION) --- */
+        /* --- CART MODAL --- */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6); z-index: 200;
-            display: none; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.6); z-index: 200; display: none; align-items: center; justify-content: center;
         }
         .cart-modal {
             background: white; width: 90%; max-width: 400px; max-height: 80vh;
@@ -101,6 +96,20 @@
         .cart-modal-footer { padding: 15px; border-top: 1px solid #eee; background: white; }
         .btn-confirm { background-color: #4caf50; color: white; width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: 700; font-size: 1.1rem; cursor: pointer; }
 
+        /* --- FORCED LOGIN LOCK SCREEN --- */
+        #login-lock-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #2c3e50; z-index: 10000; /* Must cover everything */
+            display: flex; align-items: center; justify-content: center; flex-direction: column;
+        }
+        .login-box {
+            background: white; padding: 40px; border-radius: 12px; width: 90%; max-width: 350px; text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .login-input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
+        .login-btn { width: 100%; padding: 12px; background: #d32f2f; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; }
+        .error-msg { color: red; font-size: 0.9rem; display: none; margin-bottom: 10px; }
+
         @media (min-width: 768px) {
             .kiosk-wrapper { flex-direction: row; }
             .sidebar { width: 250px; height: 100vh; flex-direction: column; overflow-y: auto; overflow-x: hidden; padding: 0; }
@@ -110,18 +119,31 @@
             .footer-body { flex-direction: row; }
             .add-btn { width: auto; padding: 15px 40px; border-radius: 50px; }
             .p-image { height: 140px; }
-            .floating-cart-btn { left: auto; width: 300px; } /* Fixed width on desktop */
+            .floating-cart-btn { left: auto; width: 300px; } 
         }
     </style>
 </head>
 <body>
 
+    <div id="login-lock-screen">
+        <div class="login-box">
+            <h1 style="margin:0 0 20px 0;">🍔 Kiosk Mode</h1>
+            <p style="color:#777; margin-bottom:20px;">Staff Login Required</p>
+            
+            <div class="error-msg" id="loginError">Invalid Credentials</div>
+            
+            <input type="text" id="k_user" class="login-input" placeholder="Username">
+            <input type="password" id="k_pass" class="login-input" placeholder="Password">
+            <button class="login-btn" onclick="performKioskLogin()">Unlock Kiosk</button>
+        </div>
+    </div>
+
     <div class="kiosk-wrapper">
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar-container">
             </aside>
 
         <main class="main-content">
-            <div class="grid-header" id="categoryTitle">Loading...</div>
+            <div class="grid-header" id="categoryTitle">Loading Menu...</div>
             <div class="product-grid" id="productGrid">
                 </div>
         </main>
@@ -156,8 +178,7 @@
                 <span>My Order</span>
                 <button class="close-btn" onclick="closeCartModal()">✕</button>
             </div>
-            <div class="cart-modal-body" id="cartList">
-                </div>
+            <div class="cart-modal-body" id="cartList"></div>
             <div class="cart-modal-footer">
                 <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-weight:bold;">
                     <span>Total:</span>
@@ -169,53 +190,96 @@
     </div>
 
     <script>
-        // --- DATA STATE ---
+        // --- 1. AUTHENTICATION LOGIC ---
+        // NOTE: We do NOT check session on load. 
+        // We force the lock screen to show every time the page refreshes.
+
+        // Allow 'Enter' key to login
+        document.getElementById('k_pass').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') performKioskLogin();
+        });
+
+        function performKioskLogin() {
+            const u = document.getElementById('k_user').value;
+            const p = document.getElementById('k_pass').value;
+
+            fetch('auth.php?action=login', {
+                method: 'POST',
+                body: JSON.stringify({ username: u, password: p })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Unlock visual only if credentials work
+                    unlockInterface();
+                } else {
+                    document.getElementById('loginError').style.display = 'block';
+                }
+            })
+            .catch(() => alert("Connection Error"));
+        }
+
+        function unlockInterface() {
+            // Hide lock screen
+            document.getElementById('login-lock-screen').style.display = 'none';
+            // Only load data AFTER login (Security + Performance)
+            initKiosk();
+        }
+
+        // --- 2. KIOSK LOGIC (Runs after unlock) ---
         let cart = []; 
         let currentProduct = null;
         let products = [];
+        let categories = [];
         let currentQty = 1;
+        let activeCategoryName = "";
 
-        // --- FETCH CATEGORIES ---
-        function loadCategories() {
+        function initKiosk() {
             fetch('admin_api.php?action=get_categories')
                 .then(res => res.json())
-                .then(categories => {
-                    const sidebar = document.querySelector('.sidebar');
-                    sidebar.innerHTML = ''; 
+                .then(cats => {
+                    categories = cats;
+                    renderSidebar();
+                    
+                    // --- SMART LOAD: Pick the first category automatically ---
+                    if (categories.length > 0) {
+                        activeCategoryName = categories[0].name;
+                        document.getElementById('categoryTitle').textContent = activeCategoryName;
+                    }
 
-                    categories.forEach((cat, index) => {
-                        const activeClass = index === 0 ? 'active' : '';
-                        sidebar.innerHTML += `
-                            <div class="category-item ${activeClass}" onclick="switchCategory(this, '${cat.name}')">
-                                ${cat.icon} ${cat.name}
-                            </div>
-                        `;
-                        if (index === 0) {
-                            document.getElementById('categoryTitle').textContent = cat.name;
-                            renderProducts(cat.name);
-                        }
-                    });
-                });
-        }
-
-        // --- FETCH MENU ---
-        function loadMenu() {
-            fetch('get_products.php')
-                .then(res => res.json())
-                .then(data => {
-                    products = data; 
+                    return fetch('get_products.php');
                 })
-                .catch(err => console.error("Error loading menu:", err));
+                .then(res => res.json())
+                .then(prods => {
+                    products = prods;
+                    
+                    // --- SMART RENDER: Show items immediately ---
+                    if (activeCategoryName) {
+                        renderProducts(activeCategoryName);
+                    } else {
+                        document.getElementById('categoryTitle').textContent = "Menu Empty";
+                    }
+                })
+                .catch(err => console.error("Error loading kiosk data:", err));
         }
 
-        // --- RENDER PRODUCTS ---
-        const grid = document.getElementById('productGrid');
+        function renderSidebar() {
+            const sidebar = document.getElementById('sidebar-container');
+            sidebar.innerHTML = ''; 
+            categories.forEach(cat => {
+                // Highlight the first one by default
+                const activeClass = cat.name === activeCategoryName ? 'active' : '';
+                sidebar.innerHTML += `<div class="category-item ${activeClass}" onclick="switchCategory(this, '${cat.name}')">${cat.icon} ${cat.name}</div>`;
+            });
+        }
+
         function renderProducts(filterCategory) {
+            const grid = document.getElementById('productGrid');
             grid.innerHTML = '';
             const filtered = products.filter(p => p.category === filterCategory);
 
             if (filtered.length === 0) {
-                grid.innerHTML = '<div style="grid-column:span 2; text-align:center; color:#999; padding:20px;">No items here</div>';
+                grid.innerHTML = '<div style="grid-column:span 2; text-align:center; color:#999; padding:20px;">No items in this category</div>';
                 return;
             }
 
@@ -223,22 +287,14 @@
                 const card = document.createElement('div');
                 card.className = 'product-card';
                 card.onclick = () => openFooter(product); 
-                
-                const imgHtml = product.image 
-                    ? `<img src="uploads/${product.image}" class="p-image">` 
-                    : `<div class="p-image">Image</div>`;
-
-                card.innerHTML = `
-                    ${imgHtml}
-                    <div class="p-name">${product.name}</div>
-                    <div class="p-price">₱${product.price}</div>
-                `;
+                const imgHtml = product.image ? `<img src="uploads/${product.image}" class="p-image">` : `<div class="p-image">Image</div>`;
+                card.innerHTML = `${imgHtml}<div class="p-name">${product.name}</div><div class="p-price">₱${product.price}</div>`;
                 grid.appendChild(card);
             });
         }
 
-        // --- UI INTERACTION ---
         function switchCategory(element, categoryName) {
+            activeCategoryName = categoryName;
             document.querySelectorAll('.category-item').forEach(el => el.classList.remove('active'));
             element.classList.add('active');
             document.getElementById('categoryTitle').textContent = categoryName;
@@ -246,136 +302,48 @@
             closeFooter();
         }
 
-        function openFooter(product) {
-            currentProduct = product;
-            currentQty = 1; // Reset qty
-            updateFooterUI();
-            document.getElementById('footerOverlay').classList.add('visible');
-        }
-
-        function closeFooter() {
-            document.getElementById('footerOverlay').classList.remove('visible');
-        }
-
-        function changeQty(change) {
-            if (currentQty + change >= 1) {
-                currentQty += change;
-                updateFooterUI();
-            }
-        }
-
-        function updateFooterUI() {
-            document.getElementById('footerItemName').textContent = currentProduct.name;
-            document.getElementById('qtyDisplay').textContent = currentQty;
-            const total = (currentProduct.price * currentQty).toFixed(2);
-            document.getElementById('footerPrice').textContent = "₱" + total;
-        }
-
-        // --- CART LOGIC (LOCAL ONLY) ---
+        // --- CART & MODALS ---
+        function openFooter(product) { currentProduct = product; currentQty = 1; updateFooterUI(); document.getElementById('footerOverlay').classList.add('visible'); }
+        function closeFooter() { document.getElementById('footerOverlay').classList.remove('visible'); }
+        function changeQty(change) { if (currentQty + change >= 1) { currentQty += change; updateFooterUI(); } }
+        function updateFooterUI() { document.getElementById('footerItemName').textContent = currentProduct.name; document.getElementById('qtyDisplay').textContent = currentQty; document.getElementById('footerPrice').textContent = "₱" + (currentProduct.price * currentQty).toFixed(2); }
+        
         function addToCart() {
             if(!currentProduct) return;
-
-            // Check if item exists in cart to merge (optional, but good UX)
             const existingItem = cart.find(i => i.name === currentProduct.name);
-            if(existingItem) {
-                existingItem.qty += currentQty;
-            } else {
-                cart.push({
-                    name: currentProduct.name,
-                    price: parseFloat(currentProduct.price),
-                    qty: currentQty
-                });
-            }
-
-            closeFooter();
-            updateFloatingCart();
+            if(existingItem) existingItem.qty += currentQty;
+            else cart.push({ name: currentProduct.name, price: parseFloat(currentProduct.price), qty: currentQty });
+            closeFooter(); updateFloatingCart();
         }
 
         function updateFloatingCart() {
             const btn = document.getElementById('floatingCartBtn');
-            if (cart.length === 0) {
-                btn.style.display = 'none';
-                return;
-            }
-            
-            // Calculate Totals
+            if (cart.length === 0) { btn.style.display = 'none'; return; }
             const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
             const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-
             document.getElementById('btnCount').textContent = totalQty + " Items";
             document.getElementById('btnTotal').textContent = "₱" + totalPrice.toFixed(2);
-            
-            btn.style.display = 'flex'; // Show button
+            btn.style.display = 'flex'; 
         }
 
-        // --- CART MODAL (VIEW & SUBMIT) ---
         function openCartModal() {
-            const list = document.getElementById('cartList');
-            list.innerHTML = '';
-            let grandTotal = 0;
-
+            const list = document.getElementById('cartList'); list.innerHTML = ''; let grandTotal = 0;
             cart.forEach((item, index) => {
-                const itemTotal = item.price * item.qty;
-                grandTotal += itemTotal;
-                list.innerHTML += `
-                    <div class="cart-item-row">
-                        <div>
-                            <div style="font-weight:600;">${item.name}</div>
-                            <div style="color:#777; font-size:0.9rem;">₱${item.price} x ${item.qty}</div>
-                        </div>
-                        <div style="font-weight:bold;">₱${itemTotal.toFixed(2)}</div>
-                        <button onclick="removeFromCart(${index})" style="background:none; border:none; color:red; font-size:1.2rem; margin-left:10px;">×</button>
-                    </div>
-                `;
+                const itemTotal = item.price * item.qty; grandTotal += itemTotal;
+                list.innerHTML += `<div class="cart-item-row"><div><div style="font-weight:600;">${item.name}</div><div style="color:#777; font-size:0.9rem;">₱${item.price} x ${item.qty}</div></div><div style="font-weight:bold;">₱${itemTotal.toFixed(2)}</div><button onclick="removeFromCart(${index})" style="background:none; border:none; color:red; font-size:1.2rem; margin-left:10px; cursor:pointer;">×</button></div>`;
             });
-
             document.getElementById('modalTotal').textContent = "₱" + grandTotal.toFixed(2);
             document.getElementById('cartModal').style.display = 'flex';
         }
+        function closeCartModal() { document.getElementById('cartModal').style.display = 'none'; }
+        function removeFromCart(index) { cart.splice(index, 1); updateFloatingCart(); if (cart.length === 0) closeCartModal(); else openCartModal(); }
 
-        function closeCartModal() {
-            document.getElementById('cartModal').style.display = 'none';
-        }
-
-        function removeFromCart(index) {
-            cart.splice(index, 1);
-            updateFloatingCart(); // Update button
-            if (cart.length === 0) closeCartModal(); // Close if empty
-            else openCartModal(); // Re-render list
-        }
-
-        // --- FINAL SUBMIT ---
         function submitOrder() {
             if (cart.length === 0) return;
-
             const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-
-            fetch('place_order.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: cart, total: total })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if(data.status === 'success') {
-                    // Success!
-                    cart = []; // Clear cart
-                    updateFloatingCart();
-                    closeCartModal();
-                    alert("Order Placed Successfully! Your Order #" + data.order_id);
-                } else {
-                    alert("Error saving order");
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                alert("Connection Failed");
-            });
+            fetch('place_order.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: cart, total: total }) })
+            .then(res => res.json()).then(data => { if(data.status === 'success') { cart = []; updateFloatingCart(); closeCartModal(); alert("Order Placed Successfully! Your Order #" + data.order_id); } else { alert("Error saving order"); } });
         }
-
-        // --- INIT ---
-        loadCategories();
-        loadMenu();
 
     </script>
 </body>
