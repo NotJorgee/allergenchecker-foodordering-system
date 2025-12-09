@@ -10,6 +10,7 @@ if ($action == 'login') {
     $data = json_decode(file_get_contents("php://input"), true);
     $user = $data['username'];
     $pass = md5($data['password']); 
+    $appType = $data['app'] ?? 'admin'; // 'kiosk' or 'admin'
 
     $stmt = $conn->prepare("SELECT id, role FROM users WHERE username=? AND password=?");
     $stmt->bind_param("ss", $user, $pass);
@@ -17,76 +18,68 @@ if ($action == 'login') {
     $result = $stmt->get_result();
 
     if ($row = $result->fetch_assoc()) {
-        $_SESSION['user_id'] = $row['id'];
-        $_SESSION['role'] = $row['role']; // Store role in session
+        // STORE IN SEPARATE SESSIONS
+        if ($appType === 'kiosk') {
+            $_SESSION['kiosk_session'] = ['id' => $row['id'], 'role' => $row['role']];
+        } else {
+            $_SESSION['admin_session'] = ['id' => $row['id'], 'role' => $row['role']];
+        }
         echo json_encode(["status" => "success", "role" => $row['role']]);
     } else {
         echo json_encode(["status" => "error"]);
     }
 }
 
-// 2. CHECK SESSION
+// 2. CHECK SESSION (Specific to App)
 if ($action == 'check_session') {
-    if (isset($_SESSION['user_id'])) {
-        echo json_encode(["status" => "logged_in", "role" => $_SESSION['role']]);
-    } else {
+    $appType = $_GET['app'] ?? 'admin';
+
+    if ($appType === 'kiosk' && isset($_SESSION['kiosk_session'])) {
+        echo json_encode(["status" => "logged_in", "role" => $_SESSION['kiosk_session']['role']]);
+    } 
+    elseif ($appType === 'admin' && isset($_SESSION['admin_session'])) {
+        echo json_encode(["status" => "logged_in", "role" => $_SESSION['admin_session']['role']]);
+    } 
+    else {
         echo json_encode(["status" => "logged_out"]);
     }
 }
 
-// 3. LOGOUT
+// 3. LOGOUT (Specific to App)
 if ($action == 'logout') {
-    session_destroy();
+    $appType = $_GET['app'] ?? 'admin';
+    if ($appType === 'kiosk') unset($_SESSION['kiosk_session']);
+    else unset($_SESSION['admin_session']);
     echo json_encode(["status" => "success"]);
 }
 
-// ==========================================
-//  PROTECTED ROUTES (ADMIN ONLY)
-// ==========================================
-
-// Helper function to check admin
+// 4. USERS MANAGEMENT (Admin Only)
 function isAdmin() {
-    return isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
+    return isset($_SESSION['admin_session']) && $_SESSION['admin_session']['role'] === 'admin';
 }
 
-// 4. LIST USERS
 if ($action == 'get_users') {
-    if (!isAdmin()) { echo json_encode([]); exit; } // Block access
-    
+    if (!isAdmin()) { echo json_encode([]); exit; }
     $result = $conn->query("SELECT id, username, role, created_at FROM users");
     $users = [];
-    while($row = $result->fetch_assoc()) {
-        $users[] = $row;
-    }
+    while($row = $result->fetch_assoc()) $users[] = $row;
     echo json_encode($users);
 }
 
-// 5. ADD USER
 if ($action == 'add_user') {
-    if (!isAdmin()) { echo json_encode(["status" => "error", "message" => "Unauthorized"]); exit; }
-
+    if (!isAdmin()) exit;
     $data = json_decode(file_get_contents("php://input"), true);
-    $user = $data['username'];
-    $pass = md5($data['password']);
-    $role = $data['role'];
-
     $stmt = $conn->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)");
-    $stmt->bind_param("sss", $user, $pass, $role);
-    
-    if($stmt->execute()) echo json_encode(["status" => "success"]);
-    else echo json_encode(["status" => "error"]);
+    $pass = md5($data['password']);
+    $stmt->bind_param("sss", $data['username'], $pass, $data['role']);
+    echo $stmt->execute() ? json_encode(["status"=>"success"]) : json_encode(["status"=>"error"]);
 }
 
-// 6. DELETE USER
 if ($action == 'delete_user') {
-    if (!isAdmin()) { echo json_encode(["status" => "error", "message" => "Unauthorized"]); exit; }
-
+    if (!isAdmin()) exit;
     $id = $_POST['id'];
-    if ($id == $_SESSION['user_id']) {
-        echo json_encode(["status" => "error", "message" => "Cannot delete yourself"]);
-    } else {
-        $conn->query("DELETE FROM users WHERE id=$id");
-        echo json_encode(["status" => "success"]);
-    }
+    if ($id == $_SESSION['admin_session']['id']) { echo json_encode(["status"=>"error", "message"=>"Cannot delete self"]); exit; }
+    $conn->query("DELETE FROM users WHERE id=$id");
+    echo json_encode(["status"=>"success"]);
 }
 ?>
