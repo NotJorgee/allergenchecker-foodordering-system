@@ -63,3 +63,50 @@ You need **two** separate databases.
 
 ### 3. File Deployment
 Copy the entire project folder to `htdocs`. Ensure the structure looks like this:
+
+/htdocs 
+/allergypass - index.html - admin.html - api.php 
+/food_ordering_system - kiosk.html - dashboard.html - get_user_profile.php (The Bridge)
+
+---
+
+## 🔑 Login Credentials
+
+### Food System Admin (`/food_ordering_system/dashboard.html`)
+| Role | Username | Password | Access |
+| :--- | :--- | :--- | :--- |
+| **Super Admin** | `admin` | `admin123` | Full Control (Menu, Users, History) |
+| **Staff** | `staff` | `staff123` | Limited (Kitchen Ops only) |
+
+### AllergyPass Admin (`/allergypass/admin.html`)
+| Role | Username | Password | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Manager** | `admin` | `admin123` | Manage Allergen Dictionary & User Database |
+
+---
+
+## 📲 How to Test (Local Network)
+
+Since phone cameras require HTTPS or Localhost, use this workflow:
+
+1.  **On Laptop (Server):**
+    * Open `http://localhost/food_ordering_system/dashboard.html` to manage the kitchen.
+    * Open `http://localhost/food_ordering_system/kiosk.html` to launch the Kiosk.
+
+2.  **On Phone (Customer):**
+    * Connect to the same Wi-Fi.
+    * Go to `http://[YOUR_LAPTOP_IP]/allergypass/` to create a profile and get a QR code.
+
+3.  **The Interaction:**
+    * Show the Phone's QR code to the Laptop's Kiosk camera.
+    * Watch the menu react instantly!
+
+---
+
+## 📝 Troubleshooting
+
+* **Camera not opening?**
+    * Check if you are on `https://` or `localhost`. Browsers block cameras on insecure `http://` IPs. Use **ngrok** to tunnel your localhost if testing on a real phone.
+* **"No MultiFormat Readers" Error?**
+    * This means the camera sees the QR but can't focus.
+    * **Fix:** Turn down phone brightness to 50% and hold it 6 inches away. The new HD QR code should scan instantly.
