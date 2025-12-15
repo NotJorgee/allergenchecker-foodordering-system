@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visual Admin Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        /* ... (Keep your existing CSS exactly as is) ... */
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
+       /* COPY CSS FROM PREVIOUS UPLOAD, NO CHANGES NEEDED HERE */
+       /* ... */
+       * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
         body { background-color: #f0f2f5; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         .navbar { background-color: #333; color: white; height: 60px; display: flex; align-items: center; padding: 0 15px; flex-shrink: 0; gap: 10px; z-index: 100; }
         .nav-brand { font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
@@ -151,16 +153,10 @@
             <h2 id="modalTitle">Add Product</h2>
             <input type="hidden" id="p_id">
             <div style="text-align:center; margin-bottom:15px;"><img id="p_preview" src="" style="width:100px; height:100px; object-fit:cover; background:#eee; border-radius:8px; display:none;"></div>
-            
             <div class="form-group"><label>Image</label><input type="file" id="p_image" class="form-control" accept="image/*" onchange="previewImage(this)"></div>
             <div class="form-group"><label>Name</label><input type="text" id="p_name" class="form-control"></div>
             <div class="form-group"><label>Category</label><select id="p_category" class="form-control"></select></div>
-            
-            <div class="form-group">
-                <label>Ingredients (Allergens)</label>
-                <textarea id="p_ingredients" class="form-control" rows="3" placeholder="e.g. Flour, Eggs, Milk, Peanuts..."></textarea>
-            </div>
-
+            <div class="form-group"><label>Ingredients (Allergens)</label><textarea id="p_ingredients" class="form-control" rows="3" placeholder="e.g. Flour, Eggs, Milk, Peanuts..."></textarea></div>
             <div class="form-group" style="display:flex; gap:10px;"><div style="flex:1;"><label>Price</label><input type="number" id="p_price" class="form-control"></div><div style="flex:1;"><label>Status</label><select id="p_status" class="form-control"><option value="1">Available</option><option value="0">Out of Stock</option></select></div></div>
             <div class="modal-actions"><button class="btn-close" style="background:#f44336; float:left; margin-right:auto;" onclick="deleteProductFromModal()">Delete</button><button class="btn-close" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveProduct()">Save</button></div>
         </div>
@@ -203,7 +199,7 @@
         function initHistory() { if(!document.getElementById('date-end').value) { document.getElementById('date-end').valueAsDate=new Date(); let d=new Date(); d.setDate(d.getDate()-30); document.getElementById('date-start').valueAsDate=d; } fetchHistory(); }
         function setHistoryFilter(status) { historyFilterStatus=status; document.querySelectorAll('.h-btn').forEach(b => b.classList.remove('active')); document.getElementById('filter-'+status).classList.add('active'); fetchHistory(); }
         function fetchHistory() { const start=document.getElementById('date-start').value; const end=document.getElementById('date-end').value; fetch(`api.php?action=get_history&start=${start}&end=${end}&status=${historyFilterStatus}`).then(res => res.json()).then(data => { currentHistoryData=data.history; document.getElementById('total-revenue').innerText="₱"+(data.stats.total_revenue||0); document.getElementById('total-orders').innerText=data.stats.total_orders||0; const tbody=document.getElementById('history-list'); tbody.innerHTML=''; if(data.history.length===0) { tbody.innerHTML='<tr><td colspan="5" style="text-align:center; padding:20px;">No records found.</td></tr>'; return; } data.history.forEach(order => { const statusClass=order.status==='completed'?'status-completed':'status-cancelled'; tbody.innerHTML+=`<tr><td>#${order.id}</td><td>${order.created_at}</td><td style="font-size:0.9rem; color:#555;">${order.items_summary}</td><td style="font-weight:bold;">₱${order.total_price}</td><td><span class="status-badge ${statusClass}">${order.status}</span></td></tr>`; }); }); }
-        function downloadCSV() { if(currentHistoryData.length===0) { alert("No data!"); return; } let csvContent="data:text/csv;charset=utf-8,Order ID,Date,Items,Total Price,Status\n"; currentHistoryData.forEach(row => { const cleanItems=row.items_summary.replace(/,/g, " +"); csvContent+=`${row.id},${row.created_at},${cleanItems},${row.total_price},${row.status}\n`; }); const link=document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "report.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link); }
+        function downloadCSV() { if(currentHistoryData.length===0) { Swal.fire('Info', 'No data to export', 'info'); return; } let csvContent="data:text/csv;charset=utf-8,Order ID,Date,Items,Total Price,Status\n"; currentHistoryData.forEach(row => { const cleanItems=row.items_summary.replace(/,/g, " +"); csvContent+=`${row.id},${row.created_at},${cleanItems},${row.total_price},${row.status}\n`; }); const link=document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "report.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link); }
 
         // --- MENU MANAGER ---
         function initVisualMenuManager() { fetch('admin_api.php?action=get_categories').then(res => res.json()).then(cats => { allCategories=cats; if(cats.length>0 && !currentCategoryFilter) currentCategoryFilter=cats[0].name; renderVisualSidebar(); fetch('admin_api.php?action=get_all').then(res => res.json()).then(prods => { allProducts=prods; renderVisualGrid(); }); }); }
@@ -216,7 +212,6 @@
         function openModal() { document.getElementById('productModal').style.display='flex'; document.getElementById('p_id').value=''; document.getElementById('p_name').value=''; document.getElementById('p_price').value=''; document.getElementById('p_ingredients').value=''; document.getElementById('p_preview').style.display='none'; document.getElementById('modalTitle').innerText="Add New Product"; fetchCategoriesForDropdown(); }
         function closeModal() { document.getElementById('productModal').style.display='none'; }
         
-        // UPDATED: editProduct to load ingredients
         function editProduct(p) { 
             openModal(); 
             document.getElementById('modalTitle').innerText="Edit Product"; 
@@ -224,39 +219,89 @@
             document.getElementById('p_name').value=p.name; 
             document.getElementById('p_price').value=p.price; 
             document.getElementById('p_status').value=p.is_available; 
-            document.getElementById('p_ingredients').value=p.ingredients || ''; // Load ingredients or empty
-            
+            document.getElementById('p_ingredients').value=p.ingredients || '';
             fetchCategoriesForDropdown().then(() => { document.getElementById('p_category').value=p.category; }); 
             if(p.image_url) { document.getElementById('p_preview').src=p.image_url; document.getElementById('p_preview').style.display='inline-block'; } 
         }
 
-        // UPDATED: saveProduct to send ingredients
         function saveProduct() { 
             const fd=new FormData(); 
             fd.append('id', document.getElementById('p_id').value); 
             fd.append('name', document.getElementById('p_name').value); 
             fd.append('category', document.getElementById('p_category').value); 
-            fd.append('ingredients', document.getElementById('p_ingredients').value); // Send new field
+            fd.append('ingredients', document.getElementById('p_ingredients').value);
             fd.append('price', document.getElementById('p_price').value); 
             fd.append('is_available', document.getElementById('p_status').value); 
-            
             if(document.getElementById('p_image').files[0]) fd.append('image', document.getElementById('p_image').files[0]); 
             
             fetch('admin_api.php?action=save', { method: 'POST', body: fd })
             .then(res => res.json())
-            .then(r => { if(r.status==='success') { closeModal(); initVisualMenuManager(); } else alert('Error: '+r.message); }); 
+            .then(r => { 
+                if(r.status==='success') { closeModal(); initVisualMenuManager(); Swal.fire('Saved!', 'Product updated successfully', 'success'); } 
+                else Swal.fire('Error', r.message, 'error'); 
+            }); 
         }
 
-        function deleteProductFromModal() { const id=document.getElementById('p_id').value; if(!id) return; if(confirm("Delete item?")) { const fd=new FormData(); fd.append('id', id); fetch('admin_api.php?action=delete', { method: 'POST', body: fd }).then(() => { closeModal(); initVisualMenuManager(); }); } }
+        function deleteProductFromModal() { 
+            const id=document.getElementById('p_id').value; if(!id) return; 
+            Swal.fire({
+                title: 'Delete this product?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if(result.isConfirmed) {
+                    const fd=new FormData(); fd.append('id', id); 
+                    fetch('admin_api.php?action=delete', { method: 'POST', body: fd })
+                    .then(() => { closeModal(); initVisualMenuManager(); Swal.fire('Deleted!', 'Product removed.', 'success'); });
+                }
+            });
+        }
+
         function openCatModal() { document.getElementById('categoryModal').style.display='flex'; document.getElementById('c_id').value=''; document.getElementById('c_name').value=''; document.getElementById('c_icon').value=''; document.getElementById('catModalTitle').innerText="Add Category"; }
         function closeCatModal() { document.getElementById('categoryModal').style.display='none'; }
         function saveCategory() { const data={ id: document.getElementById('c_id').value, name: document.getElementById('c_name').value, icon: document.getElementById('c_icon').value }; fetch('admin_api.php?action=save_category', { method: 'POST', body: JSON.stringify(data) }).then(() => { closeCatModal(); initVisualMenuManager(); }); }
-        function deleteCategoryFromModal() { const id=document.getElementById('c_id').value; if(!id) return; if(confirm("Delete category?")) { const fd=new FormData(); fd.append('id', id); fetch('admin_api.php?action=delete_category', { method: 'POST', body: fd }).then(() => { closeCatModal(); initVisualMenuManager(); }); } }
+        
+        function deleteCategoryFromModal() { 
+            const id=document.getElementById('c_id').value; if(!id) return; 
+            Swal.fire({
+                title: 'Delete this category?',
+                text: "All products in it will need a new category.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if(result.isConfirmed) {
+                    const fd=new FormData(); fd.append('id', id); 
+                    fetch('admin_api.php?action=delete_category', { method: 'POST', body: fd }).then(() => { closeCatModal(); initVisualMenuManager(); });
+                }
+            });
+        }
+
         function fetchUsers() { fetch('auth.php?action=get_users').then(res => res.json()).then(data => { const tbody=document.getElementById('user-list'); tbody.innerHTML=''; data.forEach(u => { tbody.innerHTML+=`<tr><td><b>${u.username}</b></td><td><span style="background:#eee; padding:2px 8px; border-radius:4px;">${u.role}</span></td><td style="color:#777; font-size:0.9rem;">${u.created_at}</td><td><button class="btn-delete" onclick="deleteUser(${u.id})">Delete</button></td></tr>`; }); }); }
         function openUserModal() { document.getElementById('userModal').style.display='flex'; document.getElementById('u_name').value=''; document.getElementById('u_pass').value=''; }
         function closeUserModal() { document.getElementById('userModal').style.display='none'; }
-        function saveUser() { const user=document.getElementById('u_name').value; const pass=document.getElementById('u_pass').value; const role=document.getElementById('u_role').value; if(!user || !pass) { alert("Please fill all fields"); return; } fetch('auth.php?action=add_user', { method: 'POST', body: JSON.stringify({ username: user, password: pass, role: role }) }).then(res => res.json()).then(data => { if(data.status==='success') { closeUserModal(); fetchUsers(); } else { alert("Error creating user"); } }); }
-        function deleteUser(id) { if(confirm("Delete this user?")) { const fd=new FormData(); fd.append('id', id); fetch('auth.php?action=delete_user', { method: 'POST', body: fd }).then(res => res.json()).then(data => { if(data.status==='error') alert(data.message); else fetchUsers(); }); } }
+        function saveUser() { 
+            const user=document.getElementById('u_name').value; const pass=document.getElementById('u_pass').value; const role=document.getElementById('u_role').value; 
+            if(!user || !pass) { Swal.fire('Error', 'Please fill all fields', 'error'); return; } 
+            fetch('auth.php?action=add_user', { method: 'POST', body: JSON.stringify({ username: user, password: pass, role: role }) }).then(res => res.json()).then(data => { if(data.status==='success') { closeUserModal(); fetchUsers(); Swal.fire('Success', 'User added', 'success'); } else { Swal.fire('Error', 'Error creating user', 'error'); } }); 
+        }
+        function deleteUser(id) { 
+            Swal.fire({
+                title: 'Delete user?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Yes, delete'
+            }).then((result) => {
+                if(result.isConfirmed) {
+                    const fd=new FormData(); fd.append('id', id); 
+                    fetch('auth.php?action=delete_user', { method: 'POST', body: fd }).then(res => res.json()).then(data => { if(data.status==='error') Swal.fire('Error', data.message, 'error'); else fetchUsers(); });
+                }
+            });
+        }
         function fetchCategoriesForDropdown() { return fetch('admin_api.php?action=get_categories').then(res => res.json()).then(data => { const select=document.getElementById('p_category'); select.innerHTML=''; data.forEach(c => select.innerHTML+=`<option value="${c.name}">${c.name}</option>`); }); }
         function previewImage(input) { if(input.files && input.files[0]) { const reader=new FileReader(); reader.onload=function(e) { document.getElementById('p_preview').src=e.target.result; document.getElementById('p_preview').style.display='inline-block'; }; reader.readAsDataURL(input.files[0]); } }
         function editCategory(c) { openCatModal(); document.getElementById('catModalTitle').innerText="Edit Category"; document.getElementById('c_id').value=c.id; document.getElementById('c_name').value=c.name; document.getElementById('c_icon').value=c.icon; }

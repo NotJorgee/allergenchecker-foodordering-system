@@ -5,42 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kiosk Ordering System</title>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
+        /* ... (Keep CSS exactly same as before) ... */
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
         body { background-color: #f4f4f4; height: 100vh; overflow: hidden; }
-        
-        /* LAYOUT */
         .kiosk-wrapper { display: flex; height: 100vh; width: 100vw; flex-direction: column; position: relative; }
         .sidebar { width: 100%; background-color: #fff; border-bottom: 1px solid #ddd; display: flex; overflow-x: auto; white-space: nowrap; padding: 10px; z-index: 10; }
         .category-item { padding: 10px 20px; margin-right: 10px; border-radius: 20px; background-color: #f0f0f0; font-weight: 600; color: #555; cursor: pointer; display: flex; align-items: center; flex-shrink: 0; }
         .category-item.active { background-color: #d32f2f; color: #fff; }
-        
         .main-content { flex: 1; padding: 15px; overflow-y: auto; background-color: #f9f9f9; padding-bottom: 150px; }
-        
-        /* HEADER */
         .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .grid-header { font-size: 1.5rem; color: #333; font-weight: 800; }
-        
         .safety-status { display: none; align-items: center; gap: 10px; background: #ffebee; color: #c62828; padding: 8px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; border: 1px solid #ffcdd2; }
         .safety-status.active { display: flex; }
-        
         .btn-scan { background: #333; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 5px; }
-        .btn-scan:hover { background: #555; }
-
-        /* GRID & CARDS */
         .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .product-card { background: white; border-radius: 12px; padding: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; transition: transform 0.1s; position: relative; overflow: hidden; }
         .product-card:active { transform: scale(0.96); }
-        
-        /* SAFETY STYLES */
         .product-card.unsafe { border: 2px solid #ef5350; background-color: #fff5f5; }
         .badge-danger { position: absolute; top: 10px; right: 10px; background: #c62828; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 5; }
-
         .p-image { width: 100%; height: 100px; background-color: #eee; border-radius: 8px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; color: #aaa; object-fit: cover; }
         .p-name { font-weight: 600; font-size: 0.95rem; color: #333; margin-bottom: 4px; line-height: 1.2; }
         .p-price { color: #d32f2f; font-weight: 800; font-size: 1.1rem; }
-        
-        /* OVERLAYS */
         .footer-overlay { position: fixed; bottom: 0; left: 0; width: 100%; height: auto; min-height: 30vh; background-color: white; box-shadow: 0 -5px 20px rgba(0,0,0,0.15); border-top-left-radius: 20px; border-top-right-radius: 20px; transform: translateY(110%); transition: transform 0.3s; z-index: 100; display: flex; flex-direction: column; padding-bottom: 20px; }
         .footer-overlay.visible { transform: translateY(0); }
         .footer-header { padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
@@ -51,30 +38,22 @@
         .qty-btn { width: 45px; height: 45px; border-radius: 50%; border: 1px solid #ddd; background: white; font-size: 1.5rem; cursor: pointer; }
         .qty-display { font-size: 1.5rem; font-weight: bold; }
         .add-btn { background-color: #d32f2f; color: white; padding: 15px; border-radius: 12px; border: none; font-size: 1.1rem; font-weight: 700; width: 100%; cursor: pointer; }
-        
         .floating-cart-btn { position: fixed; bottom: 20px; right: 20px; left: 20px; background-color: #333; color: white; padding: 15px 20px; border-radius: 50px; display: none; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 90; cursor: pointer; transform: translateY(0); transition: 0.2s; }
-        
-        /* SCANNER MODAL UPDATED */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 200; display: none; align-items: center; justify-content: center; }
         .scanner-box { background: #000; padding: 0; border-radius: 12px; width: 90%; max-width: 500px; overflow: hidden; position: relative; border: 2px solid #444; }
         #reader { width: 100%; min-height: 300px; background: #111; }
         .scanner-close { position: absolute; top: 10px; right: 10px; background: white; border: none; width: 30px; height: 30px; border-radius: 50%; font-weight: bold; cursor: pointer; z-index: 20; }
         .scan-msg { color: #aaa; text-align: center; padding: 10px; font-size: 0.9rem; }
-
-        /* CART MODAL */
         .cart-modal { background: white; width: 90%; max-width: 400px; max-height: 80vh; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
         .cart-modal-body { padding: 15px; overflow-y: auto; flex: 1; }
         .cart-item-row { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px dashed #eee; padding-bottom:10px; }
         .cart-modal-footer { padding: 15px; border-top: 1px solid #eee; }
         .btn-confirm { background-color: #4caf50; color: white; width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: 700; font-size: 1.1rem; cursor: pointer; }
-
-        /* LOCK SCREEN */
         #login-lock-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #2c3e50; z-index: 10000; display: flex; align-items: center; justify-content: center; flex-direction: column; }
         .login-box { background: white; padding: 40px; border-radius: 12px; width: 90%; max-width: 350px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
         .login-input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
         .login-btn { width: 100%; padding: 12px; background: #d32f2f; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; }
         .error-msg { color: red; font-size: 0.9rem; display: none; margin-bottom: 10px; }
-
         @media (min-width: 768px) { .kiosk-wrapper { flex-direction: row; } .sidebar { width: 250px; height: 100vh; flex-direction: column; overflow-y: auto; overflow-x: hidden; padding: 0; } .category-item { border-radius: 0; margin-right: 0; background-color: transparent; padding: 25px 20px; border-bottom: 1px solid #eee; } .product-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); } .footer-body { flex-direction: row; } .add-btn { width: auto; padding: 15px 40px; border-radius: 50px; } .p-image { height: 140px; } .floating-cart-btn { left: auto; width: 300px; } }
     </style>
 </head>
@@ -94,10 +73,8 @@
     <div class="kiosk-wrapper">
         <aside class="sidebar" id="sidebar-container"></aside>
         <main class="main-content">
-            
             <div class="top-bar">
                 <div class="grid-header" id="categoryTitle">Loading...</div>
-                
                 <div style="display:flex; gap:10px;">
                     <div id="safetyStatus" class="safety-status">
                         <span>🛡️ <span id="safetyName">User</span></span>
@@ -106,7 +83,6 @@
                     <button class="btn-scan" onclick="openScanner()">🛡️ AllergyPass Scanner</button>
                 </div>
             </div>
-
             <div class="product-grid" id="productGrid"></div>
         </main>
     </div>
@@ -115,7 +91,7 @@
         <div class="scanner-box">
             <button class="scanner-close" onclick="closeScanner()">×</button>
             <div id="reader"></div>
-            <p class="scan-msg" id="scanFeedback">Position QR code in frame. Reduce phone brightness if needed.</p>
+            <p class="scan-msg" id="scanFeedback">Initializing camera...</p>
         </div>
     </div>
 
@@ -147,13 +123,12 @@
     </div>
 
     <script>
-        // LOGIN
         document.getElementById('k_pass').addEventListener('keypress', function (e) { if (e.key === 'Enter') performKioskLogin(); });
         function performKioskLogin() {
             const u = document.getElementById('k_user').value; const p = document.getElementById('k_pass').value;
             fetch('auth.php?action=login', { method: 'POST', body: JSON.stringify({ username: u, password: p, app: 'kiosk' }) })
             .then(res => res.json()).then(data => { if (data.status === 'success') unlockInterface(); else document.getElementById('loginError').style.display = 'block'; })
-            .catch(() => alert("Connection Error"));
+            .catch(() => Swal.fire('Error', 'Connection Failed', 'error'));
         }
         function unlockInterface() { document.getElementById('login-lock-screen').style.display = 'none'; initKiosk(); }
         
@@ -188,15 +163,11 @@
             const grid = document.getElementById('productGrid'); 
             grid.innerHTML = ''; 
             const filtered = products.filter(p => p.category === filterCategory); 
-            
             if (filtered.length === 0) { grid.innerHTML = '<div style="grid-column:span 2; text-align:center; color:#999; padding:20px;">No items in this category</div>'; return; } 
-            
             filtered.forEach(product => { 
                 const card = document.createElement('div'); card.className = 'product-card'; 
-                
                 let isUnsafe = false;
                 let conflictName = "";
-
                 if (currentUserProfile) {
                     const validation = checkSafety(product.ingredients);
                     if (!validation.safe) {
@@ -205,12 +176,9 @@
                         card.classList.add('unsafe');
                     }
                 }
-
-                card.onclick = () => openFooter(product); // Allow click even if unsafe (Soft check)
-                
+                card.onclick = () => openFooter(product);
                 const imgHtml = product.image ? `<img src="uploads/${product.image}" class="p-image">` : `<div class="p-image">Image</div>`;
                 const warningBadge = isUnsafe ? `<div class="badge-danger">⛔ ${conflictName}</div>` : '';
-
                 card.innerHTML = `${warningBadge}${imgHtml}<div class="p-name">${product.name}</div><div class="p-price">₱${product.price}</div>`; 
                 grid.appendChild(card); 
             }); 
@@ -219,14 +187,12 @@
         function checkSafety(ingredientsText) {
             if (!ingredientsText) return { safe: true };
             const ing = ingredientsText.toLowerCase();
-            
             for (let allergy of currentUserProfile.allergies) {
                 const keywords = allergenDictionary[allergy] || [allergy.toLowerCase()];
                 for (let word of keywords) {
                     if (ing.includes(word.toLowerCase())) return { safe: false, reason: allergy };
                 }
             }
-
             if (currentUserProfile.custom) {
                 for (let custom of currentUserProfile.custom) {
                     if (ing.includes(custom.name.toLowerCase())) return { safe: false, reason: custom.name };
@@ -238,39 +204,17 @@
             return { safe: true };
         }
 
-        // --- UPDATED SCANNER LOGIC ---
+        // --- SCANNER LOGIC ---
         let html5QrcodeScanner = null;
         let isProcessing = false;
 
         function openScanner() {
             document.getElementById('scannerModal').style.display = 'flex';
-            document.getElementById('scanFeedback').innerText = "Initializing camera... Please ensure phone brightness is NOT at 100%.";
-            
-            // Clear any existing instance
-            if(html5QrcodeScanner) { 
-                html5QrcodeScanner.clear().catch(e => console.error(e)); 
-            }
-
-            // HIGH-PERFORMANCE CONFIG
-            const config = { 
-                fps: 10, 
-                qrbox: { width: 250, height: 250 }, // Larger box
-                videoConstraints: {
-                    // Force HD Resolution for better clarity
-                    width: { min: 640, ideal: 1280, max: 1920 },
-                    height: { min: 480, ideal: 720, max: 1080 },
-                    facingMode: "environment" // Uses back camera on tablets/phones
-                }
-            };
-            
+            document.getElementById('scanFeedback').innerText = "Initializing camera... Ensure phone brightness is ~50%.";
+            if(html5QrcodeScanner) { html5QrcodeScanner.clear().catch(e => console.error(e)); }
+            const config = { fps: 10, qrbox: { width: 250, height: 250 }, videoConstraints: { width: { min: 640, ideal: 1280, max: 1920 }, height: { min: 480, ideal: 720, max: 1080 }, facingMode: "environment" } };
             html5QrcodeScanner = new Html5QrcodeScanner("reader", config, /* verbose= */ false);
-            
-            html5QrcodeScanner.render(onScanSuccess, (errorMessage) => {
-                // We ignore individual frame errors because 90% of frames will fail while moving
-                // But if you want to debug, uncomment this:
-                // console.log(errorMessage);
-            });
-            
+            html5QrcodeScanner.render(onScanSuccess, (error) => {});
             isProcessing = false;
         }
 
@@ -280,32 +224,53 @@
         }
 
         function onScanSuccess(decodedText) {
-            if(isProcessing) return; // Prevent double triggers
-
-            document.getElementById('scanFeedback').innerText = "Processing...";
+            if(isProcessing) return;
+            document.getElementById('scanFeedback').innerText = "Reading...";
             
             try {
-                const data = JSON.parse(decodedText);
+                const qrData = JSON.parse(decodedText);
                 
-                // VALIDATE DATA STRUCTURE
-                if(!data.name || !data.allergies) throw new Error("Missing profile data");
-
-                isProcessing = true;
-                currentUserProfile = data;
-                
-                document.getElementById('safetyName').innerText = data.name;
-                document.getElementById('safetyStatus').classList.add('active');
-                
-                closeScanner();
-                renderProducts(activeCategoryName); 
-                alert("✅ Success! Welcome, " + data.name);
+                // NEW FLOW: ID Lookup
+                if (qrData.uid) {
+                    isProcessing = true;
+                    fetch('get_user_profile.php', { method: 'POST', body: JSON.stringify({ uid: qrData.uid }) })
+                    .then(res => res.json())
+                    .then(profile => {
+                        if(profile.error) throw new Error(profile.error);
+                        applyProfile(profile);
+                    })
+                    .catch(err => {
+                        document.getElementById('scanFeedback').innerText = "❌ User Not Found";
+                        isProcessing = false;
+                    });
+                } 
+                // OLD FLOW: Direct Data
+                else if (qrData.name) {
+                    isProcessing = true;
+                    applyProfile(qrData);
+                }
 
             } catch (e) {
                 console.warn("Scan Error:", e);
-                // Give user feedback without crashing
-                document.getElementById('scanFeedback').innerText = "❌ Invalid Code. Please try again.";
-                // We do NOT set isProcessing=true here, so they can keep trying
             }
+        }
+
+        function applyProfile(data) {
+            currentUserProfile = data;
+            document.getElementById('safetyName').innerText = data.name;
+            document.getElementById('safetyStatus').classList.add('active');
+            closeScanner();
+            renderProducts(activeCategoryName); 
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Welcome, ' + data.name,
+                text: 'Menu filtered for your safety.',
+                timer: 2000,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end'
+            });
         }
 
         function clearSafety() {
@@ -318,7 +283,6 @@
         function openFooter(product) { 
             currentProduct = product; currentQty = 1; updateFooterUI(); 
             let ingDisplay = product.ingredients ? "Ingredients: " + product.ingredients : "No ingredients listed.";
-            
             if(currentUserProfile) {
                 const check = checkSafety(product.ingredients);
                 if(!check.safe) {
@@ -336,25 +300,56 @@
         function addToCart() { 
             if(!currentProduct) return; 
             
+            const processAdd = () => {
+                const existingItem = cart.find(i => i.name === currentProduct.name); 
+                if(existingItem) existingItem.qty += currentQty; 
+                else cart.push({ name: currentProduct.name, price: parseFloat(currentProduct.price), qty: currentQty }); 
+                closeFooter(); updateFloatingCart();
+            };
+
             if(currentUserProfile) {
                 const check = checkSafety(currentProduct.ingredients);
                 if(!check.safe) {
-                    // SOFT CHECK CONFIRMATION
-                    if(!confirm(`⚠️ MEDICAL ALERT\n\nThis item contains ${check.reason}.\n\nAre you sure you want to add it?`)) return;
+                    Swal.fire({
+                        title: '⚠️ MEDICAL ALERT',
+                        text: `This item contains ${check.reason}. Are you absolutely sure?`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#3085d6',
+                        confirmButtonText: 'Yes, add it anyway'
+                    }).then((result) => {
+                        if (result.isConfirmed) processAdd();
+                    });
+                    return;
                 }
             }
-
-            const existingItem = cart.find(i => i.name === currentProduct.name); 
-            if(existingItem) existingItem.qty += currentQty; 
-            else cart.push({ name: currentProduct.name, price: parseFloat(currentProduct.price), qty: currentQty }); 
-            closeFooter(); updateFloatingCart(); 
+            processAdd();
         }
         
         function updateFloatingCart() { const btn = document.getElementById('floatingCartBtn'); if (cart.length === 0) { btn.style.display = 'none'; return; } const totalQty = cart.reduce((sum, item) => sum + item.qty, 0); const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.qty), 0); document.getElementById('btnCount').textContent = totalQty + " Items"; document.getElementById('btnTotal').textContent = "₱" + totalPrice.toFixed(2); btn.style.display = 'flex'; }
         function openCartModal() { const list = document.getElementById('cartList'); list.innerHTML = ''; let grandTotal = 0; cart.forEach((item, index) => { const itemTotal = item.price * item.qty; grandTotal += itemTotal; list.innerHTML += `<div class="cart-item-row"><div><div style="font-weight:600;">${item.name}</div><div style="color:#777; font-size:0.9rem;">₱${item.price} x ${item.qty}</div></div><div style="font-weight:bold;">₱${itemTotal.toFixed(2)}</div><button onclick="removeFromCart(${index})" style="background:none; border:none; color:red; font-size:1.2rem; margin-left:10px; cursor:pointer;">×</button></div>`; }); document.getElementById('modalTotal').textContent = "₱" + grandTotal.toFixed(2); document.getElementById('cartModal').style.display = 'flex'; }
         function closeCartModal() { document.getElementById('cartModal').style.display = 'none'; }
         function removeFromCart(index) { cart.splice(index, 1); updateFloatingCart(); if (cart.length === 0) closeCartModal(); else openCartModal(); }
-        function submitOrder() { if (cart.length === 0) return; const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0); fetch('place_order.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: cart, total: total }) }).then(res => res.json()).then(data => { if(data.status === 'success') { cart = []; updateFloatingCart(); closeCartModal(); alert("Order Placed Successfully! Your Order #" + data.order_id); } else { alert("Error saving order"); } }); }
+        function submitOrder() { 
+            if (cart.length === 0) return; 
+            const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0); 
+            fetch('place_order.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: cart, total: total }) })
+            .then(res => res.json()).then(data => { 
+                if(data.status === 'success') { 
+                    cart = []; updateFloatingCart(); closeCartModal(); 
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Order Placed!',
+                        text: 'Your Order #' + data.order_id + ' is being prepared.',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                } else { 
+                    Swal.fire('Error', 'Could not save order', 'error'); 
+                } 
+            }); 
+        }
     </script>
 </body>
 </html>

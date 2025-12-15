@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AllergyPass - My Account</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background-color: #f0f2f5; color: #333; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
@@ -170,21 +171,47 @@
             const name = document.getElementById('r_name').value;
             const user = document.getElementById('r_user').value;
             const pass = document.getElementById('r_pass').value;
-            if(!name || !user || !pass) return alert("Fill all fields");
+            if(!name || !user || !pass) return Swal.fire('Error', 'Fill all fields', 'error');
+            
             fetch('api.php?action=register', { method: 'POST', body: JSON.stringify({username:user, password:pass, full_name:name}) })
-            .then(res=>res.json()).then(d => { if(d.status === 'success') loadProfile(); else alert(d.message); });
+            .then(res=>res.json()).then(d => { 
+                if(d.status === 'success') {
+                    Swal.fire('Success', 'Account Created!', 'success').then(() => loadProfile());
+                } else {
+                    Swal.fire('Error', d.message, 'error');
+                }
+            });
         }
+
         function login() {
             const user = document.getElementById('l_user').value;
             const pass = document.getElementById('l_pass').value;
             fetch('api.php?action=login', { method: 'POST', body: JSON.stringify({username:user, password:pass}) })
-            .then(res=>res.json()).then(d => { if(d.status === 'success') loadProfile(); else alert(d.message); });
+            .then(res=>res.json()).then(d => { 
+                if(d.status === 'success') loadProfile(); 
+                else Swal.fire('Login Failed', d.message, 'error'); 
+            });
         }
+
         function logout() { fetch('api.php?action=logout').then(() => location.reload()); }
-        function deleteAccount() { if(confirm("Are you sure?")) fetch('api.php?action=delete_account').then(() => location.reload()); }
+
+        function deleteAccount() { 
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "You won't be able to revert this!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#c62828',
+                cancelButtonColor: '#aaa',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('api.php?action=delete_account').then(() => location.reload());
+                }
+            });
+        }
 
         // --- DATA & UI ---
-        // NEW: loadProfile now accepts a 'targetView' argument
         async function loadProfile(targetView = null) {
             const resCommon = await fetch('api.php?action=get_common_allergens');
             commonAllergens = await resCommon.json();
@@ -205,11 +232,9 @@
                     updateEditorList();
                     updateUI();
                     
-                    // Logic to decide where to go
                     if (targetView) {
                         switchView(targetView);
                     } else {
-                        // Default behavior (e.g. Login) -> Go to Pass if exists, else Dashboard
                         if(d.allergies.length > 0 || d.custom_allergies.length > 0) renderPass();
                         else switchView('dashboard');
                     }
@@ -265,7 +290,15 @@
         function saveProfile() {
             const list = Array.from(activeAllergies);
             fetch('api.php?action=save_profile', { method: 'POST', body: JSON.stringify({allergies: list}) })
-            .then(() => { currentUser.allergies = list; renderPass(); });
+            .then(() => { 
+                currentUser.allergies = list; 
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Profile Saved',
+                    showConfirmButton: false,
+                    timer: 1500
+                }).then(() => renderPass());
+            });
         }
 
         // --- EDITOR LOGIC ---
@@ -309,7 +342,7 @@
             const idVal = document.getElementById('edit_id').value;
             const name = document.getElementById('c_name').value;
             
-            if(!name || tempKeywords.length === 0) return alert("Please add name and ingredients");
+            if(!name || tempKeywords.length === 0) return Swal.fire('Warning', 'Please add name and ingredients', 'warning');
 
             const action = (idVal && idVal !== "") ? 'update_custom_allergy' : 'add_custom_allergy';
             const body = { name: name, keywords: tempKeywords };
@@ -318,17 +351,24 @@
             fetch('api.php?action='+action, { method: 'POST', body: JSON.stringify(body) })
             .then(() => { 
                 closeModal(); 
-                // NEW: Explicitly say "Stay on Editor"
                 loadProfile('editor'); 
+                Swal.fire({icon: 'success', title: 'Saved', showConfirmButton: false, timer: 1000});
             });
         }
 
         function deleteCustom(id) {
-            if(!confirm("Delete this?")) return;
-            fetch('api.php?action=delete_custom_allergy', { method: 'POST', body: JSON.stringify({id: id}) })
-            .then(() => {
-                // NEW: Explicitly say "Stay on Editor"
-                loadProfile('editor');
+            Swal.fire({
+                title: 'Delete this rule?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#aaa',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('api.php?action=delete_custom_allergy', { method: 'POST', body: JSON.stringify({id: id}) })
+                    .then(() => loadProfile('editor'));
+                }
             });
         }
 
@@ -350,13 +390,12 @@
                 custom: customAllergens.map(c => ({name: c.name, keywords: c.keywords}))
             };
 
-            // Delay ensuring visibility
             setTimeout(() => {
                 new QRCode(qrContainer, {
                     text: JSON.stringify(qrData),
                     width: 180,
                     height: 180,
-                    colorDark : "#000000", // <--- CHANGED TO BLACK FOR BETTER SCANNING
+                    colorDark : "#000000",
                     colorLight : "#ffffff",
                     correctLevel : QRCode.CorrectLevel.M
                 });
@@ -368,33 +407,24 @@
             if (!qrElement) qrElement = document.querySelector("#qrcode img");
 
             if (!qrElement) { 
-                alert("QR Code not generated yet."); 
+                Swal.fire('Info', 'QR Code not generated yet.', 'info'); 
                 return;
             }
 
-            
             const PADDING = 30; 
-
-            
             const qrSize = qrElement.width || qrElement.naturalWidth;
-            
-            
             const newSize = qrSize + 2 * PADDING;
 
-            
             const paddedCanvas = document.createElement('canvas');
             paddedCanvas.width = newSize;
             paddedCanvas.height = newSize;
             const ctx = paddedCanvas.getContext('2d');
 
-            
             ctx.fillStyle = 'white';
             ctx.fillRect(0, 0, newSize, newSize);
 
-            
             ctx.drawImage(qrElement, PADDING, PADDING, qrSize, qrSize);
 
-            
             const dataURL = paddedCanvas.toDataURL("image/png");
 
             const link = document.createElement("a");
